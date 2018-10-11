@@ -2,6 +2,7 @@ import tensorflow as tf
 from util import tf_utils, processing
 import pprint
 import numpy as np
+import params as par
 
 class GAN:
     def __init__(self, input_shape, learning_rate,noise_dim, num_classes=1, sess=None, ckpt_path=None, net='gan'):
@@ -150,7 +151,7 @@ class DCGAN(GAN):
     #     return
 
     def Generator(self, z, output_dim, name= 'generator'):
-        with tf.variable_scope(name):
+        with tf.variable_scope(name) and tf_utils.set_device_mode(par.gpu_mode):
             l0 = tf_utils.Dense(
                 z,
                 self.init_filter_size * self.init_kernel_size * self.init_kernel_size,
@@ -175,7 +176,7 @@ class DCGAN(GAN):
             return tf.layers.flatten(final_layer)
 
     def Discriminator(self, input, output_dim, name = 'discriminator'):
-        with tf.variable_scope(name,reuse= tf.AUTO_REUSE):
+        with tf.variable_scope(name,reuse= tf.AUTO_REUSE) and tf_utils.set_device_mode(par.gpu_mode):
             input = tf.reshape(input, [-1, 28,28,1])
 
             l0 = tf.layers.conv2d(input, 1, [5,5], strides=(1,1), padding='same')
