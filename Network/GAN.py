@@ -21,16 +21,17 @@ class GAN:
             self.sess.run(tf.global_variables_initializer())
 
     def __build_net__(self):
-        self.X = tf.placeholder(shape=[None]+self.input_shape, dtype=tf.float32, name='X')
-        self.Z = tf.placeholder(shape=[None, self.noise_dim], dtype=tf.float32, name='random_z')
+        with tf_utils.set_device_mode(par.gpu_mode):
+            self.X = tf.placeholder(shape=[None]+self.input_shape, dtype=tf.float32, name='X')
+            self.Z = tf.placeholder(shape=[None, self.noise_dim], dtype=tf.float32, name='random_z')
 
-        self.G = self.Generator(self.Z , self.X.shape[1])
-        #tf.random_normal(shape=[self.batch_size]+self.input_shape, dtype=tf.float32)
+            self.G = self.Generator(self.Z , self.X.shape[1])
+            #tf.random_normal(shape=[self.batch_size]+self.input_shape, dtype=tf.float32)
 
-        self.D = self.Discriminator(self.X, self.num_classes)
-        self.D_G = self.Discriminator(self.G, self.num_classes)
+            self.D = self.Discriminator(self.X, self.num_classes)
+            self.D_G = self.Discriminator(self.G, self.num_classes)
 
-        self.__set_loss_and_optim__()
+            self.__set_loss_and_optim__()
         return
 
     def Discriminator(self, input, output_dim, name = 'discriminator'):
@@ -151,7 +152,7 @@ class DCGAN(GAN):
     #     return
 
     def Generator(self, z, output_dim, name= 'generator'):
-        with tf.variable_scope(name, reuse=tf.AUTO_REUSE) and tf_utils.set_device_mode(par.gpu_mode):
+        with tf.variable_scope(name, reuse=tf.AUTO_REUSE):# and tf_utils.set_device_mode(par.gpu_mode):
             l0 = tf_utils.Dense(
                 z,
                 self.init_filter_size * self.init_kernel_size * self.init_kernel_size,
@@ -173,10 +174,10 @@ class DCGAN(GAN):
 
             final_layer = tf.layers.conv2d_transpose(l1, 1, [5,5], strides=(2,2), padding='same', activation=tf.nn.tanh)
             print(final_layer.shape)
-            return tf.layers.flatten(final_layer)
+        return tf.layers.flatten(final_layer)
 
     def Discriminator(self, input, output_dim, name = 'discriminator'):
-        with tf.variable_scope(name,reuse= tf.AUTO_REUSE) and tf_utils.set_device_mode(par.gpu_mode):
+        with tf.variable_scope(name,reuse= tf.AUTO_REUSE):# and tf_utils.set_device_mode(par.gpu_mode):
             input = tf.reshape(input, [-1, 28,28,1])
 
             l0 = tf.layers.conv2d(input, 1, [5,5], strides=(1,1), padding='same')
@@ -195,11 +196,11 @@ class DCGAN(GAN):
             l2 = tf.layers.batch_normalization(l2)
 
             l3 = tf.layers.flatten(l2)
-            l3 = tf_utils.Dense(l3, 64, name+'/l3', activation=tf.nn.leaky_relu)
+            l3 = tf_utils.Dense(l3, 64, 'l3', activation=tf.nn.leaky_relu)
 
-            logits = tf_utils.Dense(l3, output_dim, name+'/logits')
-
-            return logits
+            logits = tf_utils.Dense(l3, output_dim, 'logits')
+            print(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator'))
+        return logits
 
         #tf.reshape(z, [z.shape[0], 1, tf.sqrt(z.shape[1]),tf.sqrt(z.shape[1])])
         # conv1 = tf.layers.conv2d(z, 1024, [4,4])
