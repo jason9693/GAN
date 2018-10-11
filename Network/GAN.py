@@ -151,7 +151,7 @@ class DCGAN(GAN):
     #     return
 
     def Generator(self, z, output_dim, name= 'generator'):
-        with tf.variable_scope(name) and tf_utils.set_device_mode(par.gpu_mode):
+        with tf.variable_scope(name, reuse=tf.AUTO_REUSE) and tf_utils.set_device_mode(par.gpu_mode):
             l0 = tf_utils.Dense(
                 z,
                 self.init_filter_size * self.init_kernel_size * self.init_kernel_size,
