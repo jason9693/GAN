@@ -202,7 +202,7 @@ class DCGAN(GAN):
 
         #tf.reshape(z, [z.shape[0], 1, tf.sqrt(z.shape[1]),tf.sqrt(z.shape[1])])
         # conv1 = tf.layers.conv2d(z, 1024, [4,4])
-class WGAN(GAN):
+class WGAN(DCGAN):
     def __init__(self, input_shape, learning_rate,noise_dim, num_classes=1, sess=None, ckpt_path=None, net='WGAN'):
         self.init_kernel_size = 7
         self.init_filter_size = 512
