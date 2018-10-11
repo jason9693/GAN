@@ -195,9 +195,9 @@ class DCGAN(GAN):
             l2 = tf.layers.batch_normalization(l2)
 
             l3 = tf.layers.flatten(l2)
-            l3 = tf_utils.Dense(l3, 64, name+'l3', activation=tf.nn.leaky_relu)
+            l3 = tf_utils.Dense(l3, 64, name+'/l3', activation=tf.nn.leaky_relu)
 
-            logits = tf_utils.Dense(l3, output_dim, 'logits')
+            logits = tf_utils.Dense(l3, output_dim, name+'/logits')
 
             return logits
 
