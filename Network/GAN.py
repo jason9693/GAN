@@ -4,7 +4,7 @@ import pprint
 import numpy as np
 import params as par
 
-class GAN:
+class GAN:  #Vanilla GAN Model
     def __init__(self, input_shape, learning_rate,noise_dim, num_classes=1, sess=None, ckpt_path=None, net='gan'):
         self.input_shape = input_shape
         self.learning_rate = learning_rate
@@ -97,12 +97,12 @@ class GAN:
         return
 
 
-class LSGAN(GAN):
+class LSGAN(GAN):   #LSGAN Model (Least Square GAN)
     def __init__(self, input_shape, learning_rate, noise_dim, num_classes=1, sess=None, ckpt_path=None, net='lsgan'):
         super().__init__(input_shape, learning_rate, noise_dim, num_classes, sess, ckpt_path, net)
 
     def __set_loss_and_optim__(self):
-        self.G_loss = tf.square(tf.nn.sigmoid(self.D_G) - 1)
+        self.G_loss = tf.square(self.D_G - 1)
         self.G_loss = tf.reduce_mean(self.G_loss)
 
         self.D_loss = tf.square(self.D - 1) + tf.square(self.D_G)
@@ -117,39 +117,16 @@ class LSGAN(GAN):
             tf.train.AdamOptimizer(self.learning_rate).minimize(self.G_loss, var_list=G_vars)
 
         print('Discriminator variables: {}, loss: {}'.format(D_vars, self.D_loss))
-        print('\nGenerator variables: {}, loss: {}'.format(G_vars, self.D_loss))
+        print('\nGenerator variables: {}, loss: {}'.format(G_vars, self.G_loss))
 
         return
 
-class DCGAN(GAN):
+class DCGAN(GAN):   #Deep Convolution GAN Model
     def __init__(self, input_shape, learning_rate,noise_dim, num_classes=1, sess=None, ckpt_path=None, net='DCGAN'):
         self.init_kernel_size = 7
         self.init_filter_size = 512
         super().__init__(input_shape, learning_rate, noise_dim, num_classes, sess, ckpt_path, net)
-    #
-    # def __set_loss_and_optim__(self):
-    #     logits_real = tf.ones_like(self.D_G)
-    #     logits_fake = tf.zeros_like(self.D_G)
-    #
-    #     self.G_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_G, labels=logits_real)
-    #     self.G_loss = tf.reduce_mean(self.G_loss)
-    #
-    #     self.D_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D, labels=logits_real) \
-    #     + tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_G, labels=logits_fake)
-    #     self.D_loss = tf.reduce_mean(self.D_loss)
-    #
-    #     D_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator')
-    #     G_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
-    #
-    #     print('Discriminator variables: ',D_vars)
-    #
-    #     print('\nGenerator variables: ', G_vars)
-    #
-    #     self.D_optim = \
-    #         tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.D_loss, var_list=D_vars)
-    #     self.G_optim = \
-    #         tf.train.AdamOptimizer(self.learning_rate).minimize(self.G_loss, var_list=G_vars)
-    #     return
+
 
     def Generator(self, z, output_dim, name= 'generator'):
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE):# and tf_utils.set_device_mode(par.gpu_mode):
@@ -202,9 +179,8 @@ class DCGAN(GAN):
             print(tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator'))
         return logits
 
-        #tf.reshape(z, [z.shape[0], 1, tf.sqrt(z.shape[1]),tf.sqrt(z.shape[1])])
-        # conv1 = tf.layers.conv2d(z, 1024, [4,4])
-class WGAN(DCGAN):
+
+class WGAN(GAN):    #Wassettein GAN Model
     def __init__(self, input_shape, learning_rate,noise_dim, num_classes=1, sess=None, ckpt_path=None, net='WGAN'):
         self.init_kernel_size = 7
         self.init_filter_size = 512
@@ -233,8 +209,47 @@ class WGAN(DCGAN):
         return
 
 
-class WGAN_GP(WGAN):
+class WGAN_GP(WGAN):    #Wassertein Gradient Penalty GAN
     def __init__(self, input_shape, learning_rate,noise_dim, num_classes=1, sess=None, ckpt_path=None, net='WGANGP'):
-        self.init_kernel_size = 7
-        self.init_filter_size = 512
         super().__init__(input_shape, learning_rate, noise_dim, num_classes, sess, ckpt_path, net)
+
+    def __set_loss_and_optim__(self):
+        self.epsilon = tf.placeholder(shape=[None,1],name='epsilon',dtype=tf.float32)
+        x_hat = self.epsilon * self.X + (1-self.epsilon) * self.G
+        self.D_xhat = self.Discriminator(x_hat, self.num_classes)
+
+
+
+        gd_dxhat = tf.gradients(self.D_xhat, x_hat)
+        lamb = 10
+        norm = tf.reduce_mean(tf.square(tf.sqrt(tf.reduce_sum(tf.square(gd_dxhat))) - 1))
+        self.D_loss = - (tf.reduce_mean(self.D_xhat - self.D) - lamb * norm )
+        self.G_loss = tf.reduce_mean(self.D_G)
+
+        D_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'discriminator')
+        G_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, 'generator')
+
+        print('Discriminator variables: ', D_vars)
+
+        print('\nGenerator variables: ', G_vars)
+
+        self.D_optim = \
+            tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.D_loss, var_list=D_vars)
+        self.G_optim = \
+            tf.train.AdamOptimizer(self.learning_rate).minimize(self.G_loss, var_list=G_vars)
+
+
+
+    def train(self, x= None, z=None, y=None):
+        if x is None:
+            return self.sess.run([self.G_optim, self.G_loss], feed_dict = {
+               self.Z: z,
+               self.epsilon: np.random.uniform(0,1,[z.shape[0],1])
+            })[1]
+        else:
+            x = processing.img_preprocessing(x)
+            return self.sess.run([self.D_optim, self.D_loss], feed_dict = {
+                self.X: x,
+                self.Z: z,
+                self.epsilon: np.random.uniform(0,1,[z.shape[0],1])
+            })[1]

@@ -2,12 +2,13 @@ import tensorflow as tf
 from util import tf_utils, processing
 import pprint
 import numpy as np
-from Network.GAN import LSGAN
+from Network.GAN import *
 
-class CGAN(LSGAN):
+class CGAN(GAN):   #Conditional GAN Model
     def __init__(self, input_shape, learning_rate, noise_dim, num_class=1,num_labels = 10, sess=None, ckpt_path=None, net='cgan'):
-        super().__init__(input_shape, learning_rate, noise_dim, num_class, sess, ckpt_path, net)
         self.num_labels = num_labels
+        super().__init__(input_shape, learning_rate, noise_dim, num_class, sess, ckpt_path, net)
+
 
     def __build_net__(self):
         self.X = tf.placeholder(shape=[None]+self.input_shape, dtype=tf.float32, name='X')
@@ -44,6 +45,6 @@ class CGAN(LSGAN):
         return processing.show_images(out)
 
 
-    def infer(self, z, y=None, path = '../generated/save.png'):
+    def infer(self, z, y=None, path = 'generated/cgan.png'):
         fig = self.eval(z, y)
         return fig.savefig(path)
