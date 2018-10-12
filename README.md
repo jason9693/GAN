@@ -32,3 +32,6 @@ GAN(Generative Adversarial Network) Tour
 * paper : https://arxiv.org/abs/1411.1784
 * see : Network.CGAN.CGAN
 * ![wgan](./generated/cgan.png)
+
+## see also :
+        https://colab.research.google.com/drive/1VlwPye9A4ZoEhQctCurllS_BXadri4Qa
